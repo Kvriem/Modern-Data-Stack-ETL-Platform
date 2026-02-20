@@ -1,0 +1,3 @@
+# Airflow additional dependencies
+apache-airflow-providers-docker==3.9.1
+apache-airflow-providers-postgres==5.10.0
