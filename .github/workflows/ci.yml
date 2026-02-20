@@ -36,7 +36,7 @@ jobs:
 
       - name: Run Flake8 (Python linter)
         run: |
-          flake8 etl/src/ --max-line-length=100 --exclude=__pycache__
+          flake8 etl/src/
 
       - name: Run SQLFluff (SQL linter)
         run: |

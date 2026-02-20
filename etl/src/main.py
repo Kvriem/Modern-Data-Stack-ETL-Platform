@@ -24,7 +24,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        structlog.dev.ConsoleRenderer()
+        structlog.dev.ConsoleRenderer(),
     ],
     wrapper_class=structlog.stdlib.BoundLogger,
     context_class=dict,
@@ -38,7 +38,7 @@ logger = structlog.get_logger(__name__)
 def run_etl(
     config: Optional[ETLConfig] = None,
     tables: Optional[list] = None,
-    full_refresh: bool = False
+    full_refresh: bool = False,
 ) -> dict:
     """
     Run the ETL process for all configured tables.
@@ -59,7 +59,7 @@ def run_etl(
         tables=tables,
         full_refresh=full_refresh,
         source_db=config.source_db.host,
-        target_db=config.target_db.host
+        target_db=config.target_db.host,
     )
 
     results = {
@@ -67,11 +67,13 @@ def run_etl(
         "started_at": datetime.now().isoformat(),
         "tables": {},
         "total_rows": 0,
-        "errors": []
+        "errors": [],
     }
 
     try:
-        with Extractor(config.source_db) as extractor, Loader(config.target_db) as loader:
+        with Extractor(config.source_db) as extractor, Loader(
+            config.target_db
+        ) as loader:
             for table_name in tables:
                 logger.info("Processing table", table=table_name)
 
@@ -84,7 +86,7 @@ def run_etl(
                             logger.info(
                                 "Using incremental extraction",
                                 table=table_name,
-                                watermark=watermark.isoformat()
+                                watermark=watermark.isoformat(),
                             )
 
                     # Extract data
@@ -95,15 +97,13 @@ def run_etl(
                         results["tables"][table_name] = {
                             "status": "skipped",
                             "rows_extracted": 0,
-                            "rows_loaded": 0
+                            "rows_loaded": 0,
                         }
                         continue
 
                     # Load data
                     rows_loaded = loader.load_table(
-                        table_name,
-                        rows,
-                        batch_size=config.batch_size
+                        table_name, rows, batch_size=config.batch_size
                     )
 
                     # Update watermark
@@ -114,7 +114,7 @@ def run_etl(
                     results["tables"][table_name] = {
                         "status": "success",
                         "rows_extracted": len(rows),
-                        "rows_loaded": rows_loaded
+                        "rows_loaded": rows_loaded,
                     }
                     results["total_rows"] += rows_loaded
 
@@ -122,16 +122,13 @@ def run_etl(
                         "Table processed successfully",
                         table=table_name,
                         rows_extracted=len(rows),
-                        rows_loaded=rows_loaded
+                        rows_loaded=rows_loaded,
                     )
 
                 except Exception as e:
                     error_msg = f"Error processing table {table_name}: {str(e)}"
                     logger.error(error_msg, exc_info=True)
-                    results["tables"][table_name] = {
-                        "status": "error",
-                        "error": str(e)
-                    }
+                    results["tables"][table_name] = {"status": "error", "error": str(e)}
                     results["errors"].append(error_msg)
 
     except Exception as e:
@@ -149,7 +146,7 @@ def run_etl(
         "ETL process completed",
         status=results["status"],
         total_rows=results["total_rows"],
-        errors=len(results["errors"])
+        errors=len(results["errors"]),
     )
 
     return results
@@ -174,7 +171,9 @@ def main() -> int:
             return 1
 
         if results["status"] == "partial":
-            logger.warning("ETL pipeline completed with errors", errors=results["errors"])
+            logger.warning(
+                "ETL pipeline completed with errors", errors=results["errors"]
+            )
             return 1
 
         logger.info("ETL pipeline completed successfully")

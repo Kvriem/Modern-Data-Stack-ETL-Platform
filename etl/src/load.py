@@ -30,7 +30,9 @@ class Loader:
 
     def connect(self) -> None:
         """Establish connection to target database."""
-        logger.info("Connecting to target database", host=self.config.host, db=self.config.name)
+        logger.info(
+            "Connecting to target database", host=self.config.host, db=self.config.name
+        )
         self._connection = psycopg2.connect(**self.config.psycopg2_params)
         logger.info("Connected to target database successfully")
 
@@ -73,7 +75,9 @@ class Loader:
             result = cursor.fetchone()
             return result[0] if result else None
 
-    def update_watermark(self, table_name: str, watermark: datetime, rows_processed: int) -> None:
+    def update_watermark(
+        self, table_name: str, watermark: datetime, rows_processed: int
+    ) -> None:
         """
         Update the extraction watermark for a table.
 
@@ -87,7 +91,9 @@ class Loader:
 
         with self._connection.cursor() as cursor:
             query = """
-                INSERT INTO raw._etl_watermarks (table_name, last_extracted_at, last_loaded_at, rows_processed)
+                INSERT INTO raw._etl_watermarks (
+                    table_name, last_extracted_at, last_loaded_at, rows_processed
+                )
                 VALUES (%s, %s, CURRENT_TIMESTAMP, %s)
                 ON CONFLICT (table_name)
                 DO UPDATE SET
@@ -101,14 +107,11 @@ class Loader:
                 "Updated watermark",
                 table=table_name,
                 watermark=watermark.isoformat(),
-                rows_processed=rows_processed
+                rows_processed=rows_processed,
             )
 
     def upsert_batch(
-        self,
-        table_name: str,
-        rows: List[Dict[str, Any]],
-        primary_key: str = "id"
+        self, table_name: str, rows: List[Dict[str, Any]], primary_key: str = "id"
     ) -> int:
         """
         Upsert a batch of rows to the target table.
@@ -128,7 +131,7 @@ class Loader:
 
         # Get columns from first row
         columns = list(rows[0].keys())
-        
+
         # Add ETL metadata column
         if "_etl_loaded_at" not in columns:
             columns.append("_etl_loaded_at")
@@ -137,8 +140,9 @@ class Loader:
 
         # Build upsert query
         columns_str = ", ".join(columns)
-        placeholders = ", ".join(["%s"] * len(columns))
-        update_cols = [f"{col} = EXCLUDED.{col}" for col in columns if col != primary_key]
+        update_cols = [
+            f"{col} = EXCLUDED.{col}" for col in columns if col != primary_key
+        ]
         update_str = ", ".join(update_cols)
 
         query = f"""
@@ -155,19 +159,11 @@ class Loader:
             with self._connection.cursor() as cursor:
                 execute_values(cursor, query, values, page_size=1000)
                 self._connection.commit()
-                logger.debug(
-                    "Upserted batch",
-                    table=table_name,
-                    rows=len(rows)
-                )
+                logger.debug("Upserted batch", table=table_name, rows=len(rows))
                 return len(rows)
         except Exception as e:
             self._connection.rollback()
-            logger.error(
-                "Failed to upsert batch",
-                table=table_name,
-                error=str(e)
-            )
+            logger.error("Failed to upsert batch", table=table_name, error=str(e))
             raise
 
     def load_table(
@@ -175,7 +171,7 @@ class Loader:
         table_name: str,
         rows: List[Dict[str, Any]],
         batch_size: int = 1000,
-        primary_key: str = "id"
+        primary_key: str = "id",
     ) -> int:
         """
         Load all rows to a target table in batches.
@@ -197,20 +193,16 @@ class Loader:
             "Starting load",
             table=table_name,
             total_rows=len(rows),
-            batch_size=batch_size
+            batch_size=batch_size,
         )
 
         total_loaded = 0
         for i in range(0, len(rows), batch_size):
-            batch = rows[i:i + batch_size]
+            batch = rows[i : i + batch_size]
             loaded = self.upsert_batch(table_name, batch, primary_key)
             total_loaded += loaded
 
-        logger.info(
-            "Load complete",
-            table=table_name,
-            total_loaded=total_loaded
-        )
+        logger.info("Load complete", table=table_name, total_loaded=total_loaded)
 
         return total_loaded
 

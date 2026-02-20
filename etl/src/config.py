@@ -6,12 +6,12 @@ Handles environment variables and database connection settings.
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
 class DatabaseConfig:
     """Database connection configuration."""
+
     host: str
     port: int
     name: str
@@ -38,6 +38,7 @@ class DatabaseConfig:
 @dataclass
 class ETLConfig:
     """Main ETL configuration."""
+
     source_db: DatabaseConfig
     target_db: DatabaseConfig
     batch_size: int = 1000

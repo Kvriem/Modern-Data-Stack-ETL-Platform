@@ -30,7 +30,9 @@ class Extractor:
 
     def connect(self) -> None:
         """Establish connection to source database."""
-        logger.info("Connecting to source database", host=self.config.host, db=self.config.name)
+        logger.info(
+            "Connecting to source database", host=self.config.host, db=self.config.name
+        )
         self._connection = psycopg2.connect(**self.config.psycopg2_params)
         logger.info("Connected to source database successfully")
 
@@ -50,7 +52,9 @@ class Extractor:
         """Context manager exit."""
         self.disconnect()
 
-    def get_row_count(self, table_name: str, watermark: Optional[datetime] = None) -> int:
+    def get_row_count(
+        self, table_name: str, watermark: Optional[datetime] = None
+    ) -> int:
         """
         Get count of rows to extract.
 
@@ -79,7 +83,7 @@ class Extractor:
         self,
         table_name: str,
         batch_size: int = 1000,
-        watermark: Optional[datetime] = None
+        watermark: Optional[datetime] = None,
     ) -> Generator[List[Dict[str, Any]], None, None]:
         """
         Extract data from a table in batches.
@@ -101,7 +105,7 @@ class Extractor:
             table=table_name,
             total_rows=total_rows,
             batch_size=batch_size,
-            incremental=watermark is not None
+            incremental=watermark is not None,
         )
 
         with self._connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -127,7 +131,7 @@ class Extractor:
                     "Extracted batch",
                     table=table_name,
                     batch_num=batch_num,
-                    rows_in_batch=len(rows)
+                    rows_in_batch=len(rows),
                 )
                 yield [dict(row) for row in rows]
 
@@ -135,13 +139,11 @@ class Extractor:
             "Extraction complete",
             table=table_name,
             total_batches=batch_num,
-            total_rows=total_rows
+            total_rows=total_rows,
         )
 
     def extract_full_table(
-        self,
-        table_name: str,
-        watermark: Optional[datetime] = None
+        self, table_name: str, watermark: Optional[datetime] = None
     ) -> List[Dict[str, Any]]:
         """
         Extract all data from a table at once.
@@ -154,7 +156,9 @@ class Extractor:
             List of all rows as dictionaries
         """
         all_rows = []
-        for batch in self.extract_table(table_name, batch_size=10000, watermark=watermark):
+        for batch in self.extract_table(
+            table_name, batch_size=10000, watermark=watermark
+        ):
             all_rows.extend(batch)
         return all_rows
 

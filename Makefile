@@ -109,7 +109,7 @@ lint:
 	black --check etl/src/ || true
 	@echo ""
 	@echo "2. Flake8 (Python linter)..."
-	flake8 etl/src/ --max-line-length=100 --exclude=__pycache__ || true
+	flake8 etl/src/ || true
 	@echo ""
 	@echo "3. SQLFluff (SQL linter)..."
 	sqlfluff lint dbt/models/ --dialect postgres || true
