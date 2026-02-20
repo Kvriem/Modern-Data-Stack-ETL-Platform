@@ -9,6 +9,7 @@ Orchestrates the full data pipeline:
 Author: Data Engineering Team
 """
 
+import os
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
@@ -46,16 +47,16 @@ extract_load_task = DockerOperator(
     docker_url='unix://var/run/docker.sock',
     network_mode='etl_network',
     environment={
-        'SOURCE_DB_HOST': '{{ var.value.SOURCE_DB_HOST }}',
-        'SOURCE_DB_PORT': '{{ var.value.SOURCE_DB_PORT }}',
-        'SOURCE_DB_NAME': '{{ var.value.SOURCE_DB_NAME }}',
-        'SOURCE_DB_USER': '{{ var.value.SOURCE_DB_USER }}',
-        'SOURCE_DB_PASSWORD': '{{ var.value.SOURCE_DB_PASSWORD }}',
-        'TARGET_DB_HOST': '{{ var.value.TARGET_DB_HOST }}',
-        'TARGET_DB_PORT': '{{ var.value.TARGET_DB_PORT }}',
-        'TARGET_DB_NAME': '{{ var.value.TARGET_DB_NAME }}',
-        'TARGET_DB_USER': '{{ var.value.TARGET_DB_USER }}',
-        'TARGET_DB_PASSWORD': '{{ var.value.TARGET_DB_PASSWORD }}',
+        'SOURCE_DB_HOST': os.getenv('SOURCE_DB_HOST', 'source_db'),
+        'SOURCE_DB_PORT': os.getenv('SOURCE_DB_PORT', '5432'),
+        'SOURCE_DB_NAME': os.getenv('SOURCE_DB_NAME', 'source_db'),
+        'SOURCE_DB_USER': os.getenv('SOURCE_DB_USER', 'source_user'),
+        'SOURCE_DB_PASSWORD': os.getenv('SOURCE_DB_PASSWORD', 'source_password'),
+        'TARGET_DB_HOST': os.getenv('TARGET_DB_HOST', 'target_db'),
+        'TARGET_DB_PORT': os.getenv('TARGET_DB_PORT', '5432'),
+        'TARGET_DB_NAME': os.getenv('TARGET_DB_NAME', 'target_db'),
+        'TARGET_DB_USER': os.getenv('TARGET_DB_USER', 'target_user'),
+        'TARGET_DB_PASSWORD': os.getenv('TARGET_DB_PASSWORD', 'target_password'),
     },
     mount_tmp_dir=False,
     dag=dag,
@@ -71,11 +72,11 @@ dbt_run_task = DockerOperator(
     docker_url='unix://var/run/docker.sock',
     network_mode='etl_network',
     environment={
-        'TARGET_DB_HOST': '{{ var.value.TARGET_DB_HOST }}',
-        'TARGET_DB_PORT': '{{ var.value.TARGET_DB_PORT }}',
-        'TARGET_DB_NAME': '{{ var.value.TARGET_DB_NAME }}',
-        'TARGET_DB_USER': '{{ var.value.TARGET_DB_USER }}',
-        'TARGET_DB_PASSWORD': '{{ var.value.TARGET_DB_PASSWORD }}',
+        'TARGET_DB_HOST': os.getenv('TARGET_DB_HOST', 'target_db'),
+        'TARGET_DB_PORT': os.getenv('TARGET_DB_PORT', '5432'),
+        'TARGET_DB_NAME': os.getenv('TARGET_DB_NAME', 'target_db'),
+        'TARGET_DB_USER': os.getenv('TARGET_DB_USER', 'target_user'),
+        'TARGET_DB_PASSWORD': os.getenv('TARGET_DB_PASSWORD', 'target_password'),
     },
     mounts=[
         Mount(
@@ -99,11 +100,11 @@ dbt_test_task = DockerOperator(
     docker_url='unix://var/run/docker.sock',
     network_mode='etl_network',
     environment={
-        'TARGET_DB_HOST': '{{ var.value.TARGET_DB_HOST }}',
-        'TARGET_DB_PORT': '{{ var.value.TARGET_DB_PORT }}',
-        'TARGET_DB_NAME': '{{ var.value.TARGET_DB_NAME }}',
-        'TARGET_DB_USER': '{{ var.value.TARGET_DB_USER }}',
-        'TARGET_DB_PASSWORD': '{{ var.value.TARGET_DB_PASSWORD }}',
+        'TARGET_DB_HOST': os.getenv('TARGET_DB_HOST', 'target_db'),
+        'TARGET_DB_PORT': os.getenv('TARGET_DB_PORT', '5432'),
+        'TARGET_DB_NAME': os.getenv('TARGET_DB_NAME', 'target_db'),
+        'TARGET_DB_USER': os.getenv('TARGET_DB_USER', 'target_user'),
+        'TARGET_DB_PASSWORD': os.getenv('TARGET_DB_PASSWORD', 'target_password'),
     },
     mounts=[
         Mount(
