@@ -150,43 +150,43 @@ jobs:
 
       - name: Start database services
         run: |
-          docker-compose up -d source_db target_db
+          docker compose up -d source_db target_db
           echo "Waiting for databases to be healthy..."
           sleep 30
 
       - name: Check database health
         run: |
-          docker-compose ps
-          docker-compose logs source_db
-          docker-compose logs target_db
+          docker compose ps
+          docker compose logs source_db
+          docker compose logs target_db
 
       - name: Build and run ETL
         run: |
-          docker-compose build etl
-          docker-compose --profile etl run --rm etl
+          docker compose build etl
+          docker compose --profile etl run --rm etl
         continue-on-error: true
 
       - name: Build and run dbt
         run: |
-          docker-compose build dbt
-          docker-compose --profile dbt run --rm dbt dbt run --profiles-dir .
+          docker compose build dbt
+          docker compose --profile dbt run --rm dbt dbt run --profiles-dir .
         continue-on-error: true
 
       - name: Run dbt tests
         run: |
-          docker-compose --profile dbt run --rm dbt dbt test --profiles-dir .
+          docker compose --profile dbt run --rm dbt dbt test --profiles-dir .
         continue-on-error: true
 
       - name: Show logs on failure
         if: failure()
         run: |
-          docker-compose logs
-          docker-compose ps
+          docker compose logs
+          docker compose ps
 
       - name: Clean up
         if: always()
         run: |
-          docker-compose down -v
+          docker compose down -v
           docker system prune -f
 
   summary:
