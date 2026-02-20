@@ -1,0 +1,100 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: Customer dimension table with current attributes (SCD Type 1)
+    columns:
+      - name: customer_id
+        description: Unique identifier for customer (primary key)
+        tests:
+          - unique
+          - not_null
+      - name: customer_name
+        description: Full name of the customer
+        tests:
+          - not_null
+      - name: customer_email
+        description: Email address
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_products
+    description: Product dimension table with current attributes (SCD Type 1)
+    columns:
+      - name: product_id
+        description: Unique identifier for product (primary key)
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        description: Name of the product
+        tests:
+          - not_null
+      - name: unit_price
+        description: Current price per unit
+        tests:
+          - not_null
+
+  - name: fct_sales
+    description: Sales fact table at line item grain (incremental)
+    columns:
+      - name: order_item_id
+        description: Unique identifier for each line item (primary key)
+        tests:
+          - unique
+          - not_null
+      - name: order_id
+        description: Reference to order
+        tests:
+          - not_null
+      - name: customer_id
+        description: Reference to customer dimension
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customers')
+              field: customer_id
+      - name: product_id
+        description: Reference to product dimension
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_products')
+              field: product_id
+      - name: line_total
+        description: Total revenue for this line item
+        tests:
+          - not_null
+      - name: order_date
+        description: Date when order was placed
+        tests:
+          - not_null
+
+  - name: fct_orders
+    description: Order summary fact table with aggregated metrics
+    columns:
+      - name: order_id
+        description: Unique identifier for the order (primary key)
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Reference to customer dimension
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customers')
+              field: customer_id
+      - name: order_total
+        description: Total amount for the order
+        tests:
+          - not_null
+      - name: total_items
+        description: Number of distinct items in the order
+        tests:
+          - not_null
+      - name: order_date
+        description: Date when order was placed
+        tests:
+          - not_null

@@ -225,10 +225,10 @@ extract_load_task → dbt_run_task → dbt_test_task
 | 1 | Project Structure | ✅ |
 | 2 | Docker Infrastructure | ✅ |
 | 3 | ETL Service | ✅ |
-| 4 | dbt Layer | ⬜ |
-| 5 | Airflow DAG | ⬜ |
-| 6 | CI/CD Pipeline | ⬜ |
-| 7 | Documentation | ⬜ |
+| 4 | dbt Layer | ✅ |
+| 5 | Airflow DAG | ✅ |
+| 6 | CI/CD Pipeline | ✅ |
+| 7 | Documentation | ✅ |
 
 ---
 

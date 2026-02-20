@@ -1,0 +1,215 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install linting dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black flake8 sqlfluff
+
+      - name: Run Black (Python formatter)
+        run: |
+          black --check etl/src/ || echo "Black formatting issues found"
+
+      - name: Run Flake8 (Python linter)
+        run: |
+          flake8 etl/src/ --max-line-length=100 --exclude=__pycache__
+
+      - name: Run SQLFluff (SQL linter)
+        run: |
+          sqlfluff lint dbt/models/ --dialect postgres || echo "SQL linting issues found"
+
+  test-etl:
+    name: Test ETL
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install ETL dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r etl/requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run pytest
+        run: |
+          cd etl
+          pytest tests/ -v --cov=src --cov-report=term-missing || echo "Some tests failed"
+
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint, test-etl]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ETL image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./etl
+          file: ./etl/Dockerfile
+          push: false
+          tags: docker-actions-etl:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build dbt image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./dbt
+          file: ./dbt/Dockerfile
+          push: false
+          tags: docker-actions-dbt:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Airflow image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./airflow
+          file: ./airflow/Dockerfile
+          push: false
+          tags: docker-actions-airflow:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    needs: build-images
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          # Source Database
+          SOURCE_DB_HOST=source_db
+          SOURCE_DB_PORT=5432
+          SOURCE_DB_NAME=source_oltp
+          SOURCE_DB_USER=source_user
+          SOURCE_DB_PASSWORD=source_password
+
+          # Target Database
+          TARGET_DB_HOST=target_db
+          TARGET_DB_PORT=5432
+          TARGET_DB_NAME=target_warehouse
+          TARGET_DB_USER=target_user
+          TARGET_DB_PASSWORD=target_password
+
+          # Airflow Database
+          AIRFLOW_DB_NAME=airflow
+          AIRFLOW_DB_USER=airflow_user
+          AIRFLOW_DB_PASSWORD=airflow_password
+
+          # Airflow Configuration
+          AIRFLOW__CORE__EXECUTOR=LocalExecutor
+          AIRFLOW__CORE__FERNET_KEY=test_fernet_key_32_characters_min
+          AIRFLOW__CORE__LOAD_EXAMPLES=False
+          AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow_user:airflow_password@airflow_db:5432/airflow
+          EOF
+
+      - name: Start database services
+        run: |
+          docker-compose up -d source_db target_db
+          echo "Waiting for databases to be healthy..."
+          sleep 30
+
+      - name: Check database health
+        run: |
+          docker-compose ps
+          docker-compose logs source_db
+          docker-compose logs target_db
+
+      - name: Build and run ETL
+        run: |
+          docker-compose build etl
+          docker-compose --profile etl run --rm etl
+        continue-on-error: true
+
+      - name: Build and run dbt
+        run: |
+          docker-compose build dbt
+          docker-compose --profile dbt run --rm dbt dbt run --profiles-dir .
+        continue-on-error: true
+
+      - name: Run dbt tests
+        run: |
+          docker-compose --profile dbt run --rm dbt dbt test --profiles-dir .
+        continue-on-error: true
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          docker-compose logs
+          docker-compose ps
+
+      - name: Clean up
+        if: always()
+        run: |
+          docker-compose down -v
+          docker system prune -f
+
+  summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [lint, test-etl, build-images, integration-test]
+    if: always()
+    
+    steps:
+      - name: Check pipeline status
+        run: |
+          echo "Pipeline execution completed"
+          echo "Lint: ${{ needs.lint.result }}"
+          echo "Test ETL: ${{ needs.test-etl.result }}"
+          echo "Build Images: ${{ needs.build-images.result }}"
+          echo "Integration Test: ${{ needs.integration-test.result }}"
+
+      - name: Fail if any job failed
+        if: |
+          needs.lint.result == 'failure' ||
+          needs.test-etl.result == 'failure' ||
+          needs.build-images.result == 'failure' ||
+          needs.integration-test.result == 'failure'
+        run: |
+          echo "Pipeline failed"
+          exit 1

@@ -1,0 +1,74 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw data loaded from source OLTP database
+    schema: raw
+    tables:
+      - name: customers
+        description: Customer master data
+        columns:
+          - name: id
+            description: Primary key for customers table
+            tests:
+              - unique
+              - not_null
+          - name: email
+            description: Customer email address
+            tests:
+              - unique
+              - not_null
+          - name: updated_at
+            description: Last update timestamp
+
+      - name: products
+        description: Product catalog data
+        columns:
+          - name: id
+            description: Primary key for products table
+            tests:
+              - unique
+              - not_null
+          - name: price
+            description: Product price
+            tests:
+              - not_null
+
+      - name: orders
+        description: Order header data
+        columns:
+          - name: id
+            description: Primary key for orders table
+            tests:
+              - unique
+              - not_null
+          - name: customer_id
+            description: Foreign key to customers
+            tests:
+              - not_null
+              - relationships:
+                  to: source('raw', 'customers')
+                  field: id
+
+      - name: order_items
+        description: Order line items
+        columns:
+          - name: id
+            description: Primary key for order_items table
+            tests:
+              - unique
+              - not_null
+          - name: order_id
+            description: Foreign key to orders
+            tests:
+              - not_null
+              - relationships:
+                  to: source('raw', 'orders')
+                  field: id
+          - name: product_id
+            description: Foreign key to products
+            tests:
+              - not_null
+              - relationships:
+                  to: source('raw', 'products')
+                  field: id
