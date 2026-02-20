@@ -1,259 +1,351 @@
-📌 Prompt for Local Agent
+# Production-Grade ETL Pipeline
 
-You are a senior Data Engineer and DevOps architect.
+A fully containerized, production-ready data engineering pipeline demonstrating modern data stack best practices.
 
-I want you to help me build a production-grade data engineering project with the following characteristics:
+## 📸 Screenshots
 
-🎯 Project Goal
+### Airflow DAG
+![Airflow DAG](docs/airflow-dag.png)
 
-Build a fully containerized ETL pipeline that:
+### CI/CD Workflow
+![CI/CD Workflow](docs/workflow-ci.png)
 
-Extracts data from a source database
+## 🏗️ Architecture
 
-Loads it into a target data warehouse
+```
+┌─────────────────┐
+│  Source DB      │
+│  (PostgreSQL)   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Python ETL     │
+│  Extract & Load │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Target DB      │
+│  (PostgreSQL)   │
+│  Raw Schema     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  dbt Transform  │
+│  Staging → Mart │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Data Warehouse │
+│  Analytics-Ready│
+└─────────────────┘
 
-Transforms it using dbt
+     Orchestrated by Apache Airflow
+     Automated via GitHub Actions CI/CD
+```
 
-Orchestrates everything using Airflow
+## 🎯 Features
 
-Uses GitHub Actions for CI
+- **Containerized Architecture**: All components run in Docker containers
+- **Production ETL**: Incremental loading with watermarks, error handling, retries
+- **dbt Transformations**: Layered architecture (staging → intermediate → marts)
+- **Apache Airflow**: Orchestration with dependency management
+- **CI/CD Pipeline**: Automated testing and deployment via GitHub Actions
+- **Data Quality**: Comprehensive dbt tests (unique, not_null, relationships)
+- **Developer Tools**: Makefile for common tasks, pre-commit hooks
+- **Comprehensive Testing**: Unit tests with pytest
 
-Follows production best practices
+## 📦 Tech Stack
 
-This project must simulate a real-world modern data stack.
+- **Orchestration**: Apache Airflow
+- **ETL**: Python 3.11, psycopg2, structlog
+- **Transformations**: dbt Core
+- **Databases**: PostgreSQL 15
+- **Containerization**: Docker, Docker Compose
+- **CI/CD**: GitHub Actions
+- **Testing**: pytest, black, flake8, sqlfluff
 
-🏗 Architecture Overview
+## 🚀 Quick Start
 
-The system must include:
+### Prerequisites
 
-Source Database (Container 1)
+- Docker & Docker Compose
+- Make (optional but recommended)
+- Git
 
-PostgreSQL
+### Setup
 
-Acts as OLTP system
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd docker-actions
+   ```
 
-Target Database (Container 2)
+2. **Create environment file**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
 
-PostgreSQL
+3. **Build and start services**
+   ```bash
+   make setup
+   # Or manually:
+   # docker-compose build
+   # docker-compose up -d
+   ```
 
-Acts as Data Warehouse
+4. **Wait for initialization** (30 seconds)
+   - Airflow will initialize the database and create admin user
 
-Python ETL Service (Custom Docker Image)
+5. **Access Airflow UI**
+   - URL: http://localhost:8080
+   - Username: `admin`
+   - Password: `admin`
 
-Extracts from source DB
+## 🔧 Common Commands
 
-Loads into target DB (raw schema)
+```bash
+# Start all services
+make up
 
-Must be idempotent
+# Stop all services
+make down
 
-Must support incremental loads
+# Run ETL manually
+make etl
 
-dbt Layer
+# Run dbt transformations
+make dbt-run
 
-Connected to target database
+# Run dbt tests
+make dbt-test
 
-Has staging, intermediate, and mart layers
+# Run complete pipeline
+make pipeline
 
-Includes tests (unique, not_null, relationships)
+# View logs
+make logs
 
-Uses incremental models where appropriate
+# Run Python tests
+make test
 
-Airflow
+# Run linters
+make lint
 
-Orchestrates:
-extract_load_task → dbt_run_task → dbt_test_task
+# Format code
+make format
 
-Uses DockerOperator
+# Connect to databases
+make db-source  # Source database
+make db-target  # Target database
 
-Includes retries and proper logging
+# Clean up everything
+make clean
+```
 
-GitHub Actions
+## 📊 Data Flow
 
-Runs on push and PR
+### 1. Source Database (OLTP)
+- **Tables**: customers, orders, products, order_items
+- **Port**: 5433
+- Simulates operational database
 
-Builds Docker images
+### 2. ETL Process
+- **Extract**: Read data from source with incremental loading
+- **Load**: Upsert data to target `raw` schema
+- **Watermarks**: Track last extraction timestamp
 
-Spins up docker-compose services
+### 3. dbt Transformations
 
-Runs ETL
+#### Staging Layer (`raw` → `staging`)
+- Clean and standardize column names
+- Type casting
+- 1:1 mapping from source
 
-Runs dbt
+**Models:**
+- `stg_customers`
+- `stg_products`
+- `stg_orders`
+- `stg_order_items`
 
-Runs tests
+#### Intermediate Layer (`staging` → `intermediate`)
+- Business logic joins
+- Calculated fields
+- Data enrichment
 
-Fails if any step fails
+**Models:**
+- `int_orders_enriched` - Orders with customer info
+- `int_order_items_enriched` - Items with product details
 
-📁 Required Project Structure
+#### Marts Layer (`intermediate` → `marts`)
+- Analytics-ready tables
+- Star schema design
+- Aggregations
 
-The repository must follow this structure:
+**Models:**
+- `dim_customers` - Customer dimension
+- `dim_products` - Product dimension
+- `fct_sales` - Sales fact (incremental)
+- `fct_orders` - Order summary fact
 
-project-root/
-│
-├── airflow/
-│   ├── dags/
-│   └── Dockerfile
-│
-├── etl/
-│   ├── src/
-│   │   ├── extract.py
-│   │   ├── load.py
-│   │   ├── main.py
-│   ├── tests/
-│   └── Dockerfile
-│
-├── dbt/
+### 4. Airflow Orchestration
+
+**DAG**: `etl_pipeline`
+- **Schedule**: Daily at 2 AM UTC
+- **Tasks**:
+  1. `extract_load` - Run Python ETL
+  2. `dbt_run` - Execute dbt models
+  3. `dbt_test` - Run data quality tests
+
+## 🧪 Testing
+
+### Python Unit Tests
+```bash
+cd etl
+pytest tests/ -v --cov=src --cov-report=term-missing
+```
+
+### dbt Tests
+```bash
+make dbt-test
+# Or manually:
+docker-compose --profile dbt run --rm dbt dbt test --profiles-dir .
+```
+
+### CI/CD Pipeline
+- Runs automatically on push/PR
+- **Stages**:
+  1. Lint (black, flake8, sqlfluff)
+  2. Test ETL (pytest)
+  3. Build Docker images
+  4. Integration test (full pipeline)
+
+## 📁 Project Structure
+
+```
+docker-actions/
+├── airflow/              # Airflow configuration
+│   ├── dags/            # DAG definitions
+│   ├── Dockerfile       # Airflow image
+│   └── requirements.txt
+├── dbt/                 # dbt project
 │   ├── models/
-│   │   ├── staging/
-│   │   ├── intermediate/
-│   │   └── marts/
-│   └── dbt_project.yml
-│
-├── docker-compose.yml
-├── .github/workflows/ci.yml
-├── requirements.txt
+│   │   ├── staging/     # Staging models
+│   │   ├── intermediate/# Intermediate models
+│   │   └── marts/       # Mart models
+│   ├── dbt_project.yml
+│   └── profiles.yml
+├── etl/                 # Python ETL service
+│   ├── src/
+│   │   ├── extract.py   # Data extraction
+│   │   ├── load.py      # Data loading
+│   │   ├── main.py      # Orchestration
+│   │   └── config.py    # Configuration
+│   ├── tests/           # Unit tests
+│   ├── Dockerfile
+│   └── requirements.txt
+├── db/
+│   └── init/            # Database initialization
+├── .github/
+│   └── workflows/
+│       └── ci.yml       # CI/CD pipeline
+├── docker-compose.yml   # Service definitions
+├── Makefile            # Developer commands
+├── .env.example        # Environment template
 └── README.md
-🐳 Docker Requirements
+```
 
-Each service must run in its own container
+## 🔒 Security
 
-Use Docker networks (no localhost)
+- Database credentials via environment variables
+- No hardcoded secrets
+- `.env` file excluded from version control
+- Docker secrets for production deployment
 
-Use environment variables for credentials
+## 📈 Monitoring & Logging
 
-Use .env file locally
+- **Structured Logging**: JSON logs with structlog
+- **Airflow UI**: Task monitoring and logs
+- **dbt Logs**: Transformation execution details
+- **Health Checks**: Database availability monitoring
 
-Use named volumes for DB persistence
+## 🛠️ Development
 
-Use multi-stage builds when possible
+### Adding a New Table
 
-Add healthchecks to databases
+1. **Add to ETL config** (`etl/src/config.py`)
+2. **Create staging model** (`dbt/models/staging/`)
+3. **Add tests** (`schema.yml`)
+4. **Create marts** as needed
+5. **Run pipeline**: `make pipeline`
 
-🧠 ETL Design Requirements
+### Pre-commit Hooks
 
-The ETL must:
+```bash
+# Install
+pip install pre-commit
+pre-commit install
 
-Be modular (extract.py, load.py, main.py)
+# Run manually
+pre-commit run --all-files
+```
 
-Use logging
+## 🐛 Troubleshooting
 
-Be idempotent
+### Services won't start
+```bash
+# Check logs
+docker-compose logs
 
-Use upserts or merge strategy
+# Reset everything
+make clean
+make setup
+```
 
-Support incremental loading via watermark column
+### Database connection errors
+```bash
+# Check database health
+docker-compose ps
 
-Handle failures gracefully
+# Restart databases
+docker-compose restart source_db target_db
+```
 
-📊 dbt Requirements
+### Airflow tasks failing
+```bash
+# View Airflow logs
+docker-compose logs airflow-scheduler
+docker-compose logs airflow-webserver
 
-Must follow layered architecture:
+# Check task logs in Airflow UI
+```
 
-staging
+## 📚 Resources
 
-intermediate
+- [dbt Documentation](https://docs.getdbt.com/)
+- [Airflow Documentation](https://airflow.apache.org/docs/)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
 
-marts
+## 🤝 Contributing
 
-Must include schema.yml tests
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `make test && make lint`
+5. Submit a pull request
 
-Must include at least one incremental model
+## 📝 License
 
-Must run dbt test after dbt run
+This project is for educational and portfolio purposes.
 
-Should generate documentation
+## 👤 Author
 
-🌬 Airflow Requirements
+**Data Engineering Team**
 
-Single DAG
+---
 
-Uses DockerOperator
-
-Proper dependency chaining
-
-Includes retries
-
-No hardcoded credentials
-
-Configurable schedule
-
-🔁 CI/CD Requirements
-
-GitHub Actions must:
-
-Run linting (black, flake8, sqlfluff)
-
-Run pytest for ETL
-
-Build Docker images
-
-Run docker-compose
-
-Execute ETL
-
-Execute dbt run
-
-Execute dbt test
-
-Fail on error
-
-Add caching to speed up builds.
-
-📈 Code Quality Standards
-
-Use type hints in Python
-
-Follow PEP8
-
-Use logging instead of print
-
-Use environment variables
-
-Avoid hardcoding values
-
-Write meaningful commit messages
-
-Add a professional README with architecture diagram
-
-🚀 Additional Production-Level Enhancements
-
-If possible, also include:
-
-Makefile with developer commands
-
-Pre-commit hooks
-
-Health checks
-
-Structured logging
-
-Retry mechanisms
-
-Clear separation between dev and prod configs
-
-🔎 How You Should Help Me
-
-When generating code:
-
-Provide production-quality code
-
-Add comments explaining decisions
-
-Explain best practices briefly
-
-Avoid shortcuts
-
-Think like a senior engineer reviewing a PR
-
-If something is ambiguous, propose the most production-ready approach.
-
-The goal is to build a portfolio-level, real-world, modern data engineering project that demonstrates:
-
-Containerization
-
-Orchestration
-
-Data modeling
-
-CI/CD
-
-DevOps best practices
+**⭐ If you found this project helpful, please give it a star!**
