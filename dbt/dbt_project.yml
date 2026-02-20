@@ -1,0 +1,46 @@
+# dbt Project Configuration
+name: 'etl_warehouse'
+version: '1.0.0'
+config-version: 2
+
+# Project paths
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+# Target and profile
+profile: 'etl_warehouse'
+
+# Clean targets
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Model configurations
+models:
+  etl_warehouse:
+    # Staging models
+    staging:
+      +schema: staging
+      +materialized: view
+      +tags: ['staging']
+    
+    # Intermediate models
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+      +tags: ['intermediate']
+    
+    # Mart models
+    marts:
+      +schema: marts
+      +materialized: table
+      +tags: ['marts']
+
+# Variables
+vars:
+  # Date for incremental filtering (can be overridden at runtime)
+  start_date: '2020-01-01'
