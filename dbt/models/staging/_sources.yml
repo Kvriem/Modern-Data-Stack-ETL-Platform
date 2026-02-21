@@ -47,8 +47,9 @@ sources:
             tests:
               - not_null
               - relationships:
-                  to: source('raw', 'customers')
-                  field: id
+                  arguments:
+                    to: source('raw', 'customers')
+                    field: id
 
       - name: order_items
         description: Order line items
@@ -63,12 +64,14 @@ sources:
             tests:
               - not_null
               - relationships:
-                  to: source('raw', 'orders')
-                  field: id
+                  arguments:
+                    to: source('raw', 'orders')
+                    field: id
           - name: product_id
             description: Foreign key to products
             tests:
               - not_null
               - relationships:
-                  to: source('raw', 'products')
-                  field: id
+                  arguments:
+                    to: source('raw', 'products')
+                    field: id

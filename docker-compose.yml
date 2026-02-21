@@ -129,6 +129,7 @@ services:
     volumes:
       - ./dbt:/usr/app/dbt
       - dbt_logs:/usr/app/dbt/logs
+      - dbt_target:/usr/app/dbt/target
     working_dir: /usr/app/dbt
     # Default command - can be overridden
     command: ["dbt", "debug"]
@@ -280,3 +281,5 @@ volumes:
     name: etl_logs
   dbt_logs:
     name: dbt_logs
+  dbt_target:
+    name: dbt_target

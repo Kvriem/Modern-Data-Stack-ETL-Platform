@@ -15,9 +15,12 @@ RUN pip install --no-cache-dir dbt-postgres==1.8.2
 RUN groupadd --gid 1000 dbt && \
     useradd --uid 1000 --gid dbt --shell /bin/bash --create-home dbt
 
-# Create directories
-RUN mkdir -p /usr/app/dbt/logs && \
+# Create directories and set ownership
+RUN mkdir -p /usr/app/dbt/logs /usr/app/dbt/target && \
     chown -R dbt:dbt /usr/app/dbt
+
+# Switch to non-root user
+USER dbt
 
 # Switch to non-root user
 USER dbt

@@ -49,14 +49,16 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_customers')
-              field: customer_id
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
       - name: order_status
         description: Current status of the order
         tests:
           - not_null
           - accepted_values:
-              values: ['pending', 'processing', 'shipped', 'completed', 'cancelled']
+              arguments:
+                values: ['pending', 'processing', 'shipped', 'completed', 'cancelled']
 
   - name: stg_order_items
     description: Staging model for order line items with cleaned and standardized columns
@@ -71,15 +73,17 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_orders')
-              field: order_id
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
       - name: product_id
         description: Reference to product
         tests:
           - not_null
           - relationships:
-              to: ref('stg_products')
-              field: product_id
+              arguments:
+                to: ref('stg_products')
+                field: product_id
       - name: line_total
         description: Total amount for this line item (quantity * unit_price)
         tests:
